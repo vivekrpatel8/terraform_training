@@ -1,8 +1,7 @@
 provider "aws" {
   # Reference: https://docs.localstack.cloud/aws/connecting/infrastructure-as-code/terraform/
-  region     = var.aws_region
-  access_key = var.aws_access_key_id
-  secret_key = var.aws_secret_access_key
+  profile = "localstack"
+  region  = var.aws_region
 
   # only required for non virtual hosted-style endpoint use case.
   # https://registry.terraform.io/providers/hashicorp/aws/latest/docs#s3_use_path_style

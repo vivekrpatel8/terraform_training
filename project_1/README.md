@@ -18,13 +18,34 @@ cd project_1
 cp .env.example .env
 ```
 
-Edit `project_1/.env` and set your LocalStack auth token and credentials:
+Edit `project_1/.env` and set your LocalStack auth token:
 
 ```bash
 export LOCALSTACK_AUTH_TOKEN=your_localstack_auth_token
 export TF_VAR_aws_region=us-east-1
-export TF_VAR_aws_access_key_id=test
-export TF_VAR_aws_secret_access_key=test
+```
+
+Configure an AWS SSO profile named `localstack` in your AWS config:
+
+```bash
+aws configure sso --profile localstack
+```
+
+Set the LocalStack endpoint URL for the profile:
+
+```bash
+aws configure set profile.localstack.sso_start_url http://localhost.localstack.cloud:4566
+
+aws configure set profile.localstack.endpoint_url http://localhost.localstack.cloud:4566
+```
+
+For reference, see:
+https://docs.localstack.cloud/aws/connecting/aws-cli/#configuring-a-custom-profile
+
+Then log in with that profile:
+
+```bash
+aws sso login --profile localstack
 ```
 
 Load the environment variables into your shell:
@@ -41,6 +62,8 @@ Install LocalStack CLI helpers if needed:
 pip install awscli-local
 pip install tflocal
 ```
+
+Note: Terraform uses the AWS CLI profile `localstack` for credentials, so the provider block no longer requires access key environment variables.
 
 ## Start LocalStack
 
@@ -80,6 +103,7 @@ awslocal s3 cp main.tf s3://s3-file-upload-bucket/main.tf
 > ```
 > upload: ./main.tf to s3://s3-file-upload-bucket/main.tf
 > ```
+
 
 Receive the S3 notification from the queue:
 
