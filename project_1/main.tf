@@ -17,12 +17,12 @@ provider "aws" {
 }
 
 resource "aws_sqs_queue" "upload_queue" {
-  name = "s3-upload-notifications-queue"
+  name =  "s3-upload-notifications-queue"
 
 }
 
 resource "aws_s3_bucket" "upload_bucket" {
-  bucket = "s3-file-upload-bucket"
+  bucket =    "s3-file-upload-bucket"
 }
 
 data "aws_iam_policy_document" "sqs_policy" {
