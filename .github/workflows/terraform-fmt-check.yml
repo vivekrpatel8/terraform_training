@@ -3,6 +3,7 @@ name: TerraformFmtCheck
 # Runs the terraform fmt check on pull requests that touch Terraform files.
 on:
   pull_request:
+    types: [opened, synchronize, reopened]
     paths:
       - "**.tf"
       - "**.tf.json"
