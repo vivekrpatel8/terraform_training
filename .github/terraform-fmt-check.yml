@@ -1,0 +1,12 @@
+name: TerraformFmtCheck
+
+# Runs the terraform fmt check on pull requests that touch Terraform files.
+on:
+  pull_request:
+    paths:
+      - "**.tf"
+      - "**.tf.json"
+
+jobs:
+  fmt:
+    uses: ./.github/workflows/terraform-fmt.yml

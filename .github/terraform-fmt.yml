@@ -1,0 +1,39 @@
+name: TerraformFmt
+
+# Reusable workflow: checks Terraform formatting with `terraform fmt`.
+# Invoke from another workflow with:
+#   jobs:
+#     fmt:
+#       uses: ./.github/workflows/terraform-fmt.yml
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Directory to run terraform fmt from.
+        type: string
+        default: "."
+      terraform-version:
+        description: Terraform version to install.
+        type: string
+        default: "1.7.5"
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: ${{ inputs.terraform-version }}
+
+      - name: Terraform fmt check
+        run: terraform fmt -check -recursive -diff
