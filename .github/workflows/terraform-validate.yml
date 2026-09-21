@@ -65,8 +65,8 @@ jobs:
           fi
 
           echo "Changed Terraform files: $FILES"
-          IFS=, read -r -a my_array <<< "$FILES"
-          for file in "${my_array[@]}"; do
+          readarray -t file_array < <(jq -r '.[]' <<< "$FILES")
+          for file in "${file_array[@]}"; do
             dir=$(dirname "$file")
             echo "$dir"
           done
