@@ -68,5 +68,6 @@ jobs:
           readarray -t file_array < <(jq -r '.[]' <<< "$FILES")
           for file in "${file_array[@]}"; do
             dir=$(dirname "$file")
+            echo "$file"
             echo "$dir"
           done
