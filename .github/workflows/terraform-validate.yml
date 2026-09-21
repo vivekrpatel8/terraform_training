@@ -1,0 +1,58 @@
+name: Terraform Validate
+
+# Reusable workflow: validates the Terraform root module(s) affected by a PR.
+#
+#   1. dorny/paths-filter lists the changed *.tf / *.tfvars / *.tftest.hcl files
+#   2. each changed file is mapped to its root module: a file under a `modules/`
+#      subdirectory is attributed to the enclosing root (path stripped at the first
+#      `/modules/`); otherwise the file's own directory is the root
+#   3. each unique root is validated with `terraform init -backend=false` + `terraform validate`
+#
+# No cloud/backend credentials are required (backend init is skipped).
+#
+# Invoke from another workflow with:
+#   jobs:
+#     validate:
+#       uses: atvenu/<repo>/.github/workflows/terraform-validate.yml@<ref>
+on:
+  workflow_call:
+    inputs:
+      terraform-version:
+        description: Terraform version to install. Pin to the version you deploy with.
+        type: string
+        default: "1.7.5"
+
+permissions:
+  contents: read
+
+jobs:
+  discover:
+    name: Discover changed roots
+    runs-on: ubuntu-latest
+    outputs:
+      roots: ${{ steps.detect.outputs.roots }}
+      has_roots: ${{ steps.detect.outputs.has_roots }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: List changed Terraform files
+        id: changed
+        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+        with:
+          list-files: json
+          filters: |
+            terraform:
+              - added|modified: '**/*.tf'
+              - added|modified: '*.tf'
+              - added|modified: '**/*.tfvars'
+              - added|modified: '*.tfvars'
+              - added|modified: '**/*.tftest.hcl'
+              - added|modified: '*.tftest.hcl'
+
+      - name: Map changed files to root modules
+        id: detect
+        env:
+          FILES: ${{ steps.changed.outputs.terraform_files }}
+        run: |
+          echo "$FILES"
