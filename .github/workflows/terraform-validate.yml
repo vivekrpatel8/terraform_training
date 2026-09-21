@@ -66,7 +66,7 @@ jobs:
 
           echo "Changed Terraform files: $FILES"
 
-          for file in ${{ steps.changed-files.outputs.all_changed_files }}; do
+          for file in $FILES; do
             dir=$(dirname "$file")
             echo "$dir"
           done
