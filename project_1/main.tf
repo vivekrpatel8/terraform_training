@@ -17,7 +17,7 @@ provider "aws" {
 }
 
 resource "aws_sqs_queue" "upload_queue" {
-  name = "s3-upload-notifications-queue"
+  name = "s3-upload-notifications-queuessss"
 
 }
 
