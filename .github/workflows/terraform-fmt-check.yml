@@ -1,4 +1,4 @@
-name: TerraformFmtCheck
+name: Terraform Format
 
 # Runs the terraform fmt check on pull requests that touch Terraform files.
 on:
@@ -7,6 +7,7 @@ on:
     paths:
       - "**.tf"
       - "**.tf.json"
+      - "**.tftest.hcl"
 
 jobs:
   fmt:

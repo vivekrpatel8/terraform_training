@@ -22,7 +22,8 @@ permissions:
   contents: read
 
 jobs:
-  fmt:
+  terraform-format:
+    name: Check formatting
     runs-on: ubuntu-latest
     defaults:
       run:
