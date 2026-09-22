@@ -23,7 +23,7 @@ permissions:
 
 jobs:
   terraform-format:
-    name: Check formatting
+    name: Check Formatting
     runs-on: ubuntu-latest
     defaults:
       run:
