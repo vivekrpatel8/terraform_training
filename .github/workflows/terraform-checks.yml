@@ -1,21 +1,34 @@
 name: Terraform Checks
 
-# Single entry point: on a PR that touches Terraform files, run fmt, validate,
-# and tflint by calling each reusable workflow.
+# Umbrella reusable workflow: runs fmt, validate, and tflint by calling each
+# reusable workflow. Call it from a caller workflow:
+#   jobs:
+#     terraform:
+#       uses: <owner>/<repo>/.github/workflows/terraform-checks.yml@<ref>
 on:
-  pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "**.tf"
-      - "**.tfvars"
-      - "**.tftest.hcl"
+  workflow_call:
+    inputs:
+      terraform-version:
+        description: Terraform version for fmt and validate.
+        type: string
+        default: "1.7.5"
+      tflint-version:
+        description: tflint version.
+        type: string
+        default: "v0.64.0"
 
 jobs:
   fmt:
     uses: ./.github/workflows/terraform-fmt.yml
+    with:
+      terraform-version: ${{ inputs.terraform-version }}
 
   validate:
     uses: ./.github/workflows/terraform-validate.yml
+    with:
+      terraform-version: ${{ inputs.terraform-version }}
 
   tflint:
     uses: ./.github/workflows/terraform-tflint.yml
+    with:
+      tflint-version: ${{ inputs.tflint-version }}

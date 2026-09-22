@@ -1,0 +1,13 @@
+name: Terraform Checks
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+      - "**.tftest.hcl"
+
+jobs:
+  terraform:
+    uses: ./.github/workflows/terraform-checks.yml
