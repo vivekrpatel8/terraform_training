@@ -1,6 +1,7 @@
 name: TerraformFmt
 
 # Reusable workflow: checks Terraform formatting with `terraform fmt`.
+# Checks every .tf file is in canonical format (fails on any unformatted file).
 # Invoke from another workflow with:
 #   jobs:
 #     fmt:

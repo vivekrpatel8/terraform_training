@@ -1,0 +1,80 @@
+name: Detect changed Terraform roots
+description: >-
+  Lists the Terraform root modules affected by the current pull request. Maps
+  each changed *.tf / *.tfvars / *.tftest.hcl file to its root module (a file
+  under a `modules/` subdirectory is attributed to the enclosing root, stripping
+  the path at the first `/modules/`), and outputs a deduplicated JSON array of
+  roots.
+
+outputs:
+  roots:
+    description: Compact JSON array of unique changed root directories, e.g. '["a","b"]'.
+    value: ${{ steps.detect.outputs.roots }}
+  has_roots:
+    description: '"true" when at least one root changed, otherwise "false".'
+    value: ${{ steps.detect.outputs.has_roots }}
+
+runs:
+  using: composite
+  steps:
+    - name: List changed Terraform files
+      id: changed
+      uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
+      with:
+        list-files: json
+        filters: |
+          terraform:
+            - added|modified: '**/*.tf'
+            - added|modified: '**/*.tfvars'
+            - added|modified: '**/*.tftest.hcl'
+
+    - name: Map changed files to root modules
+      id: detect
+      shell: bash
+      env:
+        FILES: ${{ steps.changed.outputs.terraform_files }}
+      run: |
+        set -euo pipefail
+
+        if [ -z "${FILES:-}" ] || [ "$FILES" = "[]" ]; then
+          echo "No Terraform files changed."
+          echo "has_roots=false" >> "$GITHUB_OUTPUT"
+          echo "roots=[]" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        echo "Changed Terraform files: $FILES"
+
+        # Map each changed file to its root module.
+        roots=()
+        readarray -t file_array < <(jq -r '.[]' <<< "$FILES")
+        for file in "${file_array[@]}"; do
+          [ -z "$file" ] && continue
+          dir=$(dirname "$file")
+          case "$dir" in
+            */modules/*) root="${dir%%/modules/*}" ;;
+            *)           root="$dir" ;;
+          esac
+          # Fall back to the file's own directory if the computed root has no .tf
+          if ! ls "$root"/*.tf >/dev/null 2>&1; then
+            if ls "$dir"/*.tf >/dev/null 2>&1; then
+              root="$dir"
+            else
+              continue
+            fi
+          fi
+          roots+=("$root")
+        done
+
+        if [ ${#roots[@]} -eq 0 ]; then
+          echo "No Terraform root modules found."
+          echo "has_roots=false" >> "$GITHUB_OUTPUT"
+          echo "roots=[]" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        # Deduplicate into a compact JSON array.
+        json="$(printf '%s\n' "${roots[@]}" | jq -R . | jq -s -c 'unique')"
+        echo "Root modules: $json"
+        echo "roots=$json" >> "$GITHUB_OUTPUT"
+        echo "has_roots=true" >> "$GITHUB_OUTPUT"

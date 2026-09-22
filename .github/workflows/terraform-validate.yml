@@ -1,17 +1,9 @@
 name: Terraform Validate
 
-# Reusable workflow: validates the Terraform root module(s) affected by a PR.
-# Runs as a SINGLE job (one PR check): it detects the changed roots (mapping a
-# file under a `modules/` subdir to its enclosing root), then runs
-# `terraform init -backend=false` + `terraform validate` for each unique root,
-# and fails if any root is invalid.
-#
-# No cloud/backend credentials are required (backend init is skipped).
-#
-# Invoke from another workflow with:
-#   jobs:
-#     validate:
-#       uses: atvenu/<repo>/.github/workflows/terraform-validate.yml@<ref>
+# Reusable workflow: `terraform validate` on the roots a PR changes (single check).
+# Checks each root is syntactically and semantically valid (references, types, args).
+# Roots come from the detect-terraform-roots composite action; each runs
+# init -backend=false + validate. No credentials needed.
 on:
   workflow_call:
     inputs:
@@ -31,62 +23,24 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: List changed Terraform files
-        id: changed
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        with:
-          list-files: json
-          filters: |
-            terraform:
-              - added|modified: '**/*.tf'
-              - added|modified: '**/*.tfvars'
-              - added|modified: '**/*.tftest.hcl'
+      - name: Detect changed roots
+        id: roots
+        uses: ./.github/actions/detect-terraform-roots
 
       - name: Setup Terraform
+        if: steps.roots.outputs.has_roots == 'true'
         uses: hashicorp/setup-terraform@v4
         with:
           terraform_version: ${{ inputs.terraform-version }}
 
       - name: Validate changed roots
+        if: steps.roots.outputs.has_roots == 'true'
         env:
-          FILES: ${{ steps.changed.outputs.terraform_files }}
+          ROOTS: ${{ steps.roots.outputs.roots }}
         run: |
           set -euo pipefail
 
-          if [ -z "${FILES:-}" ] || [ "$FILES" = "[]" ]; then
-            echo "No Terraform files changed; nothing to validate."
-            exit 0
-          fi
-
-          echo "Changed Terraform files: $FILES"
-
-          # Map each changed file to its root module.
-          roots=()
-          readarray -t file_array < <(jq -r '.[]' <<< "$FILES")
-          for file in "${file_array[@]}"; do
-            [ -z "$file" ] && continue
-            dir=$(dirname "$file")
-            case "$dir" in
-              */modules/*) root="${dir%%/modules/*}" ;;
-              *)           root="$dir" ;;
-            esac
-            if ! ls "$root"/*.tf >/dev/null 2>&1; then
-              if ls "$dir"/*.tf >/dev/null 2>&1; then
-                root="$dir"
-              else
-                continue
-              fi
-            fi
-            roots+=("$root")
-          done
-
-          if [ ${#roots[@]} -eq 0 ]; then
-            echo "No Terraform root modules to validate."
-            exit 0
-          fi
-
-          # Deduplicate the roots.
-          readarray -t unique_roots < <(printf '%s\n' "${roots[@]}" | sort -u)
+          readarray -t unique_roots < <(jq -r '.[]' <<< "$ROOTS")
           echo "Root modules to validate: ${unique_roots[*]}"
 
           # Validate every root; collect (don't stop on) failures so all roots
