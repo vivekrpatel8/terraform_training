@@ -93,7 +93,7 @@ jobs:
           # are reported in one run.
           failed=()
           for root in "${unique_roots[@]}"; do
-            echo "::group::terraform validate — ${root}"
+            echo "::group::terraform validate: ${root}"
             if terraform -chdir="$root" init -backend=false -input=false \
                && terraform -chdir="$root" validate -no-color; then
               echo "PASS: ${root}"
