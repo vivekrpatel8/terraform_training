@@ -10,5 +10,5 @@ on:
       - "**.tftest.hcl"
 
 jobs:
-  fmt:
+  validate:
     uses: ./.github/workflows/terraform-validate.yml
