@@ -1,0 +1,14 @@
+name: Terraform Lint
+
+# Runs tflint on the Terraform roots changed by a pull request.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+      - "**.tftest.hcl"
+
+jobs:
+  tflint:
+    uses: ./.github/workflows/terraform-tflint.yml
