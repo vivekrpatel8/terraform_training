@@ -51,7 +51,11 @@ jobs:
           if [ -f .tflint.hcl ]; then
             export TFLINT_CONFIG_FILE="${GITHUB_WORKSPACE}/.tflint.hcl"
             echo "Using tflint config: $TFLINT_CONFIG_FILE"
-            tflint --init
+            if ! tflint --init; then
+              echo "::error::tflint --init failed to download plugins."
+              echo "Fix: check the plugin blocks in .tflint.hcl (source/version) and that GITHUB_TOKEN is set."
+              exit 1
+            fi
           else
             echo "No .tflint.hcl at repo root; using tflint built-in rules."
           fi
@@ -65,6 +69,7 @@ jobs:
               echo "PASS: ${root}"
             else
               echo "FAIL: ${root}"
+              echo "  Reproduce locally from repo root: TFLINT_CONFIG_FILE=\$PWD/.tflint.hcl tflint --chdir=${root} --recursive --minimum-failure-severity=error"
               failed+=("$root")
             fi
             echo "::endgroup::"
@@ -72,6 +77,7 @@ jobs:
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::error::tflint found issues in: ${failed[*]}"
+            echo "Fix: auto-fixable issues -> add --fix to the command above; fix the rest manually, then commit and push."
             exit 1
           fi
           echo "All ${#unique_roots[@]} root(s) passed tflint."

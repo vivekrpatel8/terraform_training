@@ -53,6 +53,7 @@ jobs:
               echo "PASS: ${root}"
             else
               echo "FAIL: ${root}"
+              echo "  Reproduce locally: cd ${root} && terraform init -backend=false && terraform validate"
               failed+=("$root")
             fi
             echo "::endgroup::"
@@ -60,6 +61,7 @@ jobs:
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::error::terraform validate failed for: ${failed[*]}"
+            echo "Fix: run the command shown under each failing root, resolve the errors, commit, and push."
             exit 1
           fi
           echo "All ${#unique_roots[@]} root(s) valid."

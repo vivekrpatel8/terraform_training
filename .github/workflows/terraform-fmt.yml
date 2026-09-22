@@ -37,4 +37,9 @@ jobs:
           terraform_version: ${{ inputs.terraform-version }}
 
       - name: Terraform fmt check
-        run: terraform fmt -check -recursive -diff
+        run: |
+          if ! terraform fmt -check -recursive -diff; then
+            echo "::error::Terraform files are not formatted."
+            echo "Fix: run 'terraform fmt -recursive' at the repo root, commit, and push."
+            exit 1
+          fi
