@@ -4,7 +4,7 @@ terraform {
 
 variable "environment" {
   type        = string
-  description = "Deployment environment name"
+  description = "Deployment environment name."
   default     = "staging"
 }
 
