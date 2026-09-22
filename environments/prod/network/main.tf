@@ -6,7 +6,7 @@ terraform {
 # root to this directory itself: environments/prod/network.
 variable "vpc_cidr" {
   type        = string
-  description = "Production VPC CIDR blocks."
+  description = "Production VPC CIDR blocks"
   default     = "10.10.0.0/16"
 }
 

@@ -1,17 +1,9 @@
 name: Terraform Lint
 
-# Reusable workflow: runs tflint on the Terraform root module(s) affected by a PR.
-# Runs as a SINGLE job (one PR check): it detects the changed roots (mapping a
-# file under a `modules/` subdir to its enclosing root), then runs `tflint` in
-# each unique root, and fails if any root has lint issues.
-#
-# Uses the repo's .tflint.hcl (AWS ruleset etc.) if present; otherwise tflint's
-# built-in Terraform rules. `tflint --init` downloads the declared plugins.
-#
-# Invoke from another workflow with:
-#   jobs:
-#     tflint:
-#       uses: atvenu/<repo>/.github/workflows/terraform-tflint.yml@<ref>
+# Reusable workflow: `tflint` on the roots a PR changes (single check).
+# Checks for lint issues: invalid AWS values, deprecated syntax, best practices.
+# Roots come from the detect-terraform-roots composite action.
+# Uses a root-level .tflint.hcl (AWS ruleset) if present, else built-in rules.
 on:
   workflow_call:
     inputs:
@@ -31,61 +23,28 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: List changed Terraform files
-        id: changed
-        uses: dorny/paths-filter@ceb8a2b8f2d89434be7ff52d3de7ec3738c5cc9d # v4.0.3
-        with:
-          list-files: json
-          filters: |
-            terraform:
-              - added|modified: '**/*.tf'
-              - added|modified: '**/*.tfvars'
-              - added|modified: '**/*.tftest.hcl'
+      - name: Detect changed roots
+        id: roots
+        uses: ./.github/actions/detect-terraform-roots
 
       - name: Setup tflint
+        if: steps.roots.outputs.has_roots == 'true'
         uses: terraform-linters/setup-tflint@1cf010d3c7aef302051ccdb68c14c5dc2efa34ef # v6.3.1
         with:
           tflint_version: ${{ inputs.tflint-version }}
+          cache: true
 
       - name: Run tflint on changed roots
+        if: steps.roots.outputs.has_roots == 'true'
         env:
-          FILES: ${{ steps.changed.outputs.terraform_files }}
+          ROOTS: ${{ steps.roots.outputs.roots }}
           # Needed by `tflint --init` to download plugins from GitHub releases
           # without hitting the anonymous API rate limit.
           GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
 
-          if [ -z "${FILES:-}" ] || [ "$FILES" = "[]" ]; then
-            echo "No Terraform files changed; nothing to lint."
-            exit 0
-          fi
-
-          echo "Changed Terraform files: $FILES"
-
-          # Map each changed file to its root module.
-          roots=()
-          readarray -t file_array < <(jq -r '.[]' <<< "$FILES")
-          for file in "${file_array[@]}"; do
-            [ -z "$file" ] && continue
-            dir=$(dirname "$file")
-            case "$dir" in
-              */modules/*) root="${dir%%/modules/*}" ;;
-              *)           root="$dir" ;;
-            esac
-            if ! ls "$root"/*.tf >/dev/null 2>&1; then
-              if ls "$dir"/*.tf >/dev/null 2>&1; then root="$dir"; else continue; fi
-            fi
-            roots+=("$root")
-          done
-
-          if [ ${#roots[@]} -eq 0 ]; then
-            echo "No Terraform root modules to lint."
-            exit 0
-          fi
-
-          # Deduplicate the roots.
-          readarray -t unique_roots < <(printf '%s\n' "${roots[@]}" | sort -u)
+          readarray -t unique_roots < <(jq -r '.[]' <<< "$ROOTS")
           echo "Root modules to lint: ${unique_roots[*]}"
 
           # Install plugins declared in .tflint.hcl (AWS ruleset, etc.) once, if a
@@ -93,7 +52,11 @@ jobs:
           if [ -f .tflint.hcl ]; then
             export TFLINT_CONFIG_FILE="${GITHUB_WORKSPACE}/.tflint.hcl"
             echo "Using tflint config: $TFLINT_CONFIG_FILE"
-            tflint --init
+            if ! tflint --init; then
+              echo "::error::tflint --init failed to download plugins."
+              echo "Fix: check the plugin blocks in .tflint.hcl (source/version) and that GITHUB_TOKEN is set."
+              exit 1
+            fi
           else
             echo "No .tflint.hcl at repo root; using tflint built-in rules."
           fi
@@ -103,10 +66,11 @@ jobs:
           failed=()
           for root in "${unique_roots[@]}"; do
             echo "::group::tflint: ${root}"
-            if tflint --chdir="$root"; then
+            if tflint --chdir="$root" --recursive --minimum-failure-severity=error; then
               echo "PASS: ${root}"
             else
               echo "FAIL: ${root}"
+              echo "  Reproduce locally from repo root: TFLINT_CONFIG_FILE=\$PWD/.tflint.hcl tflint --chdir=${root} --recursive --minimum-failure-severity=error"
               failed+=("$root")
             fi
             echo "::endgroup::"
@@ -114,6 +78,7 @@ jobs:
 
           if [ ${#failed[@]} -gt 0 ]; then
             echo "::error::tflint found issues in: ${failed[*]}"
+            echo "Fix: auto-fixable issues -> add --fix to the command above; fix the rest manually, then commit and push."
             exit 1
           fi
           echo "All ${#unique_roots[@]} root(s) passed tflint."

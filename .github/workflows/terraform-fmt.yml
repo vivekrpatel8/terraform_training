@@ -1,6 +1,7 @@
 name: TerraformFmt
 
 # Reusable workflow: checks Terraform formatting with `terraform fmt`.
+# Checks every .tf file is in canonical format (fails on any unformatted file).
 # Invoke from another workflow with:
 #   jobs:
 #     fmt:
@@ -21,7 +22,8 @@ permissions:
   contents: read
 
 jobs:
-  fmt:
+  terraform-format:
+    name: Check Formatting
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -36,4 +38,9 @@ jobs:
           terraform_version: ${{ inputs.terraform-version }}
 
       - name: Terraform fmt check
-        run: terraform fmt -check -recursive -diff
+        run: |
+          if ! terraform fmt -check -recursive -diff; then
+            echo "::error::Terraform files are not formatted."
+            echo "Fix: run 'terraform fmt -recursive' at the repo root, commit, and push."
+            exit 1
+          fi

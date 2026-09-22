@@ -1,0 +1,21 @@
+name: Terraform Checks
+
+# Single entry point: on a PR that touches Terraform files, run fmt, validate,
+# and tflint by calling each reusable workflow.
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths:
+      - "**.tf"
+      - "**.tfvars"
+      - "**.tftest.hcl"
+
+jobs:
+  fmt:
+    uses: ./.github/workflows/terraform-fmt.yml
+
+  validate:
+    uses: ./.github/workflows/terraform-validate.yml
+
+  tflint:
+    uses: ./.github/workflows/terraform-tflint.yml
