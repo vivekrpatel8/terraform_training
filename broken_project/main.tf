@@ -4,7 +4,7 @@ terraform {
 
 variable "example" {
   type        = string
-  description = "Example input variable."
+  description = "Example input variable"
   default     = "value"
 }
 
